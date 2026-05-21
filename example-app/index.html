@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@capgo/capacitor-auto Example</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>@capgo/capacitor-auto</h1>
+      <p class="lead">Validate the car template bridge.</p>
+
+      <label for="template-title">Template title</label>
+      <input id="template-title" type="text" value="Garage" />
+
+      <div class="actions">
+        <button id="set-template">Set car template</button>
+        <button id="check-availability">Check availability</button>
+        <button id="get-version">Get plugin version</button>
+      </div>
+
+      <pre id="plugin-output">Press a button to run an action.</pre>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
