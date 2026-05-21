@@ -1,6 +1,6 @@
 {
   "name": "@capgo/capacitor-auto",
-  "version": "8.0.0",
+  "version": "8.1.0",
   "description": "Capacitor plugin for CarPlay and Android Auto communication.",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
