@@ -14,6 +14,11 @@ import androidx.car.app.model.Template
 import androidx.car.app.validation.HostValidator
 
 class AutoCarAppService : CarAppService() {
+    override fun onCreate() {
+        super.onCreate()
+        AutoBridge.configure(applicationContext)
+    }
+
     override fun createHostValidator(): HostValidator {
         val isDebuggable = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 

@@ -14,6 +14,7 @@ public class AutoCarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDe
     ) {
         self.interfaceController = interfaceController
         observeTemplateChanges()
+        AutoBridge.shared.reloadStoredTemplate()
         AutoBridge.shared.setConnected(true)
         reloadTemplate(animated: false)
     }

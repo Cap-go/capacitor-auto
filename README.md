@@ -21,6 +21,7 @@ npx cap sync
 - Sends a simple list template from the phone app to the car display.
 - Emits `carAction` events when the driver selects a car UI row.
 - Emits connection events when the car host connects or disconnects.
+- Persists a small JSON state slice that native car code can read when the Capacitor app is not running.
 - Provides native entry points for CarPlay and Android Auto templated apps.
 
 ## What it does not do
@@ -61,6 +62,29 @@ await Auto.addListener('carAction', async (event) => {
   }
 });
 ```
+
+## Shared car state
+
+Android Auto and CarPlay can start without the Capacitor WebView. Keep the car experience independent by writing the state it needs into the plugin store whenever the phone app has fresh data.
+
+```typescript
+await Auto.setState({
+  key: 'navigation',
+  value: {
+    routeId: 'morning-commute',
+    remainingDistanceMeters: 4200,
+    instruction: 'Turn right in 300 meters',
+  },
+});
+
+await Auto.addListener('stateChanged', (event) => {
+  if (event.key === 'navigation') {
+    console.log('Navigation state updated:', event.value);
+  }
+});
+```
+
+Native Android Auto or CarPlay code can read the same store directly through `AutoStore.get(context)` on Android and `AutoStore.shared` on iOS. The plugin also persists the last root template set with `setRootTemplate`, so a cold car session can render the most recent template before the web app wakes up.
 
 ## iOS setup
 
@@ -109,11 +133,17 @@ If your app uses another category, override the service declaration in your app 
 
 * [`isAvailable()`](#isavailable)
 * [`setRootTemplate(...)`](#setroottemplate)
+* [`setState(...)`](#setstate)
+* [`getState(...)`](#getstate)
+* [`removeState(...)`](#removestate)
+* [`setTransientState(...)`](#settransientstate)
+* [`getTransientState(...)`](#gettransientstate)
 * [`sendMessage(...)`](#sendmessage)
 * [`getPluginVersion()`](#getpluginversion)
 * [`addListener('connectionChanged', ...)`](#addlistenerconnectionchanged-)
 * [`addListener('carAction', ...)`](#addlistenercaraction-)
 * [`addListener('messageReceived', ...)`](#addlistenermessagereceived-)
+* [`addListener('stateChanged', ...)`](#addlistenerstatechanged-)
 * [`removeAllListeners()`](#removealllisteners)
 * [Interfaces](#interfaces)
 * [Type Aliases](#type-aliases)
@@ -147,6 +177,86 @@ Sets the root car template. Use this to push phone app state to the car display.
 | Param         | Type                                                                |
 | ------------- | ------------------------------------------------------------------- |
 | **`options`** | <code><a href="#autotemplateoptions">AutoTemplateOptions</a></code> |
+
+--------------------
+
+
+### setState(...)
+
+```typescript
+setState(options: AutoStateOptions) => Promise<void>
+```
+
+Persists a JSON state slice that native Android Auto and CarPlay code can read even when the
+Capacitor WebView is not alive.
+
+| Param         | Type                                                          |
+| ------------- | ------------------------------------------------------------- |
+| **`options`** | <code><a href="#autostateoptions">AutoStateOptions</a></code> |
+
+--------------------
+
+
+### getState(...)
+
+```typescript
+getState(options: AutoStateKeyOptions) => Promise<AutoStateResult>
+```
+
+Reads a persisted JSON state slice.
+
+| Param         | Type                                                                |
+| ------------- | ------------------------------------------------------------------- |
+| **`options`** | <code><a href="#autostatekeyoptions">AutoStateKeyOptions</a></code> |
+
+**Returns:** <code>Promise&lt;<a href="#autostateresult">AutoStateResult</a>&gt;</code>
+
+--------------------
+
+
+### removeState(...)
+
+```typescript
+removeState(options: AutoStateKeyOptions) => Promise<void>
+```
+
+Removes a persisted JSON state slice.
+
+| Param         | Type                                                                |
+| ------------- | ------------------------------------------------------------------- |
+| **`options`** | <code><a href="#autostatekeyoptions">AutoStateKeyOptions</a></code> |
+
+--------------------
+
+
+### setTransientState(...)
+
+```typescript
+setTransientState(options: AutoStateOptions) => Promise<void>
+```
+
+Stores a process-local JSON state slice and emits the same `stateChanged` event.
+
+| Param         | Type                                                          |
+| ------------- | ------------------------------------------------------------- |
+| **`options`** | <code><a href="#autostateoptions">AutoStateOptions</a></code> |
+
+--------------------
+
+
+### getTransientState(...)
+
+```typescript
+getTransientState(options: AutoStateKeyOptions) => Promise<AutoStateResult>
+```
+
+Reads a process-local JSON state slice.
+
+| Param         | Type                                                                |
+| ------------- | ------------------------------------------------------------------- |
+| **`options`** | <code><a href="#autostatekeyoptions">AutoStateKeyOptions</a></code> |
+
+**Returns:** <code>Promise&lt;<a href="#autostateresult">AutoStateResult</a>&gt;</code>
 
 --------------------
 
@@ -233,6 +343,24 @@ Fired for application-defined native car bridge messages.
 --------------------
 
 
+### addListener('stateChanged', ...)
+
+```typescript
+addListener(eventName: 'stateChanged', listenerFunc: (event: AutoStateChangedEvent) => void) => Promise<PluginListenerHandle>
+```
+
+Fired when a persisted or transient state value changes.
+
+| Param              | Type                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------- |
+| **`eventName`**    | <code>'stateChanged'</code>                                                                 |
+| **`listenerFunc`** | <code>(event: <a href="#autostatechangedevent">AutoStateChangedEvent</a>) =&gt; void</code> |
+
+**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt;</code>
+
+--------------------
+
+
 ### removeAllListeners()
 
 ```typescript
@@ -285,6 +413,29 @@ removeAllListeners() => Promise<void>
 #### AutoPayload
 
 
+#### AutoStateOptions
+
+| Prop        | Type                                                | Description                                       |
+| ----------- | --------------------------------------------------- | ------------------------------------------------- |
+| **`key`**   | <code>string</code>                                 | Application-defined state key.                    |
+| **`value`** | <code><a href="#autopayload">AutoPayload</a></code> | JSON object to make available to native car code. |
+
+
+#### AutoStateResult
+
+| Prop        | Type                                                | Description                                                                  |
+| ----------- | --------------------------------------------------- | ---------------------------------------------------------------------------- |
+| **`key`**   | <code>string</code>                                 | Application-defined state key.                                               |
+| **`value`** | <code><a href="#autopayload">AutoPayload</a></code> | Current JSON value for the requested key. Omitted when the key has no value. |
+
+
+#### AutoStateKeyOptions
+
+| Prop      | Type                | Description                    |
+| --------- | ------------------- | ------------------------------ |
+| **`key`** | <code>string</code> | Application-defined state key. |
+
+
 #### AutoMessageOptions
 
 | Prop          | Type                                                | Description                           |
@@ -332,6 +483,16 @@ removeAllListeners() => Promise<void>
 | **`type`**     | <code>string</code>                                   |
 | **`payload`**  | <code><a href="#autopayload">AutoPayload</a></code>   |
 | **`platform`** | <code><a href="#autoplatform">AutoPlatform</a></code> |
+
+
+#### AutoStateChangedEvent
+
+| Prop            | Type                                                  | Description                                                                        |
+| --------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| **`key`**       | <code>string</code>                                   | Application-defined state key.                                                     |
+| **`value`**     | <code><a href="#autopayload">AutoPayload</a></code>   | Current JSON value for the updated key. Omitted when the key has no value.         |
+| **`platform`**  | <code><a href="#autoplatform">AutoPlatform</a></code> | Platform that emitted the state update.                                            |
+| **`transient`** | <code>boolean</code>                                  | Whether the update came from transient in-memory state instead of persisted state. |
 
 
 ### Type Aliases

@@ -108,6 +108,37 @@ export interface AutoMessageOptions {
   payload?: AutoPayload;
 }
 
+export interface AutoStateKeyOptions {
+  /**
+   * Application-defined state key.
+   */
+  key: string;
+}
+
+export interface AutoStateOptions {
+  /**
+   * Application-defined state key.
+   */
+  key: string;
+
+  /**
+   * JSON object to make available to native car code.
+   */
+  value: AutoPayload;
+}
+
+export interface AutoStateResult {
+  /**
+   * Application-defined state key.
+   */
+  key: string;
+
+  /**
+   * Current JSON value for the requested key. Omitted when the key has no value.
+   */
+  value?: AutoPayload;
+}
+
 export interface AutoConnectionChangedEvent {
   connected: boolean;
   platform: AutoPlatform;
@@ -126,6 +157,28 @@ export interface AutoMessageEvent {
   platform: AutoPlatform;
 }
 
+export interface AutoStateChangedEvent {
+  /**
+   * Application-defined state key.
+   */
+  key: string;
+
+  /**
+   * Current JSON value for the updated key. Omitted when the key has no value.
+   */
+  value?: AutoPayload;
+
+  /**
+   * Platform that emitted the state update.
+   */
+  platform: AutoPlatform;
+
+  /**
+   * Whether the update came from transient in-memory state instead of persisted state.
+   */
+  transient: boolean;
+}
+
 export interface AutoPlugin {
   /**
    * Returns whether the current platform supports this plugin and whether a car is connected.
@@ -136,6 +189,32 @@ export interface AutoPlugin {
    * Sets the root car template. Use this to push phone app state to the car display.
    */
   setRootTemplate(options: AutoTemplateOptions): Promise<void>;
+
+  /**
+   * Persists a JSON state slice that native Android Auto and CarPlay code can read even when the
+   * Capacitor WebView is not alive.
+   */
+  setState(options: AutoStateOptions): Promise<void>;
+
+  /**
+   * Reads a persisted JSON state slice.
+   */
+  getState(options: AutoStateKeyOptions): Promise<AutoStateResult>;
+
+  /**
+   * Removes a persisted JSON state slice.
+   */
+  removeState(options: AutoStateKeyOptions): Promise<void>;
+
+  /**
+   * Stores a process-local JSON state slice and emits the same `stateChanged` event.
+   */
+  setTransientState(options: AutoStateOptions): Promise<void>;
+
+  /**
+   * Reads a process-local JSON state slice.
+   */
+  getTransientState(options: AutoStateKeyOptions): Promise<AutoStateResult>;
 
   /**
    * Sends an application-defined message to the native car bridge.
@@ -166,6 +245,14 @@ export interface AutoPlugin {
   addListener(
     eventName: 'messageReceived',
     listenerFunc: (event: AutoMessageEvent) => void,
+  ): Promise<PluginListenerHandle>;
+
+  /**
+   * Fired when a persisted or transient state value changes.
+   */
+  addListener(
+    eventName: 'stateChanged',
+    listenerFunc: (event: AutoStateChangedEvent) => void,
   ): Promise<PluginListenerHandle>;
 
   removeAllListeners(): Promise<void>;
