@@ -136,7 +136,7 @@ internal object AutoBridge {
     private val pendingEvents = mutableListOf<Pair<String, JSObject>>()
     private val screens = CopyOnWriteArrayList<WeakReference<AutoScreen>>()
     private val storeListener = AutoStore.Listener { key, value, transient ->
-        if (key != ROOT_TEMPLATE_STATE_KEY) {
+        if (key != ROOT_TEMPLATE_STATE_KEY && plugin != null) {
             emitStateChanged(key, value, transient)
         }
     }
