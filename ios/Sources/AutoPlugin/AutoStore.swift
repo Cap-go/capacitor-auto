@@ -41,15 +41,14 @@ public final class AutoStore {
 
     public func save(_ key: String, _ value: [String: Any]) {
         guard
-            JSONSerialization.isValidJSONObject(value),
-            let data = try? JSONSerialization.data(withJSONObject: value),
-            let json = String(data: data, encoding: .utf8)
+            let snapshot = Self.snapshot(value),
+            let json = Self.jsonString(snapshot)
         else {
             return
         }
 
         defaults.set(json, forKey: Self.storageKey(key))
-        notifyChanged(key, value: value, transient: false)
+        notifyChanged(key, value: snapshot, transient: false)
     }
 
     public func remove(_ key: String) {
@@ -70,13 +69,15 @@ public final class AutoStore {
     }
 
     public func setTransient(_ key: String, _ value: [String: Any]?) {
+        let snapshot = value.flatMap(Self.snapshot)
+
         lock.lock()
         let previous = transientValues[key]
-        transientValues[key] = value
+        transientValues[key] = snapshot
         lock.unlock()
 
-        if Self.jsonString(previous) != Self.jsonString(value) {
-            notifyChanged(key, value: value, transient: true)
+        if Self.jsonString(previous) != Self.jsonString(snapshot) {
+            notifyChanged(key, value: snapshot, transient: true)
         }
     }
 
@@ -84,18 +85,20 @@ public final class AutoStore {
         lock.lock()
         defer { lock.unlock() }
 
-        return transientValues[key]
+        return transientValues[key].flatMap(Self.snapshot)
     }
 
     private func notifyChanged(_ key: String, value: [String: Any]?, transient: Bool) {
+        let eventValue = value.flatMap(Self.snapshot)
+
         DispatchQueue.main.async {
             self.lock.lock()
-            let snapshot = self.listeners.compactMap { $0.value }
+            let listenerSnapshot = self.listeners.compactMap { $0.value }
             self.listeners.removeAll { $0.value == nil }
             self.lock.unlock()
 
-            for listener in snapshot {
-                listener.onAutoStoreUpdated(key, value: value, transient: transient)
+            for listener in listenerSnapshot {
+                listener.onAutoStoreUpdated(key, value: eventValue.flatMap(Self.snapshot), transient: transient)
             }
         }
     }
@@ -114,5 +117,17 @@ public final class AutoStore {
         }
 
         return String(data: data, encoding: .utf8)
+    }
+
+    private static func snapshot(_ value: [String: Any]) -> [String: Any]? {
+        guard
+            JSONSerialization.isValidJSONObject(value),
+            let data = try? JSONSerialization.data(withJSONObject: value),
+            let snapshot = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
+            return nil
+        }
+
+        return snapshot
     }
 }

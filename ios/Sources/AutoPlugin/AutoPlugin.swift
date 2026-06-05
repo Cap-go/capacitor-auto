@@ -59,10 +59,7 @@ public class AutoPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func setState(_ call: CAPPluginCall) {
-        guard let key = call.getString("key"), !key.isEmpty else {
-            call.reject("key is required")
-            return
-        }
+        guard let key = getStateKey(call) else { return }
 
         guard let value = call.getObject("value") else {
             call.reject("value is required for key=\(key)")
@@ -74,29 +71,20 @@ public class AutoPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func getState(_ call: CAPPluginCall) {
-        guard let key = call.getString("key"), !key.isEmpty else {
-            call.reject("key is required")
-            return
-        }
+        guard let key = getStateKey(call) else { return }
 
         call.resolve(stateResult(key: key, value: AutoBridge.shared.getState(key: key)))
     }
 
     @objc func removeState(_ call: CAPPluginCall) {
-        guard let key = call.getString("key"), !key.isEmpty else {
-            call.reject("key is required")
-            return
-        }
+        guard let key = getStateKey(call) else { return }
 
         AutoBridge.shared.removeState(key: key)
         call.resolve()
     }
 
     @objc func setTransientState(_ call: CAPPluginCall) {
-        guard let key = call.getString("key"), !key.isEmpty else {
-            call.reject("key is required")
-            return
-        }
+        guard let key = getStateKey(call) else { return }
 
         guard let value = call.getObject("value") else {
             call.reject("value is required for key=\(key)")
@@ -108,10 +96,7 @@ public class AutoPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func getTransientState(_ call: CAPPluginCall) {
-        guard let key = call.getString("key"), !key.isEmpty else {
-            call.reject("key is required")
-            return
-        }
+        guard let key = getStateKey(call) else { return }
 
         call.resolve(stateResult(key: key, value: AutoBridge.shared.getTransientState(key: key)))
     }
@@ -136,6 +121,20 @@ public class AutoPlugin: CAPPlugin, CAPBridgedPlugin {
         DispatchQueue.main.async { [weak self] in
             self?.notifyListeners(eventName, data: data, retainUntilConsumed: true)
         }
+    }
+
+    private func getStateKey(_ call: CAPPluginCall) -> String? {
+        guard let key = call.getString("key"), !key.isEmpty else {
+            call.reject("key is required")
+            return nil
+        }
+
+        guard key != AutoBridge.rootTemplateStateKey else {
+            call.reject("key is reserved: \(AutoBridge.rootTemplateStateKey)")
+            return nil
+        }
+
+        return key
     }
 
     private func stateResult(key: String, value: [String: Any]?) -> [String: Any] {

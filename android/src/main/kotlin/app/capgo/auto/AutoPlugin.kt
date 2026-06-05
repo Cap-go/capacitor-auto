@@ -45,11 +45,7 @@ class AutoPlugin : Plugin() {
 
     @PluginMethod
     fun setState(call: PluginCall) {
-        val key = call.getString("key")
-        if (key.isNullOrBlank()) {
-            call.reject("key is required")
-            return
-        }
+        val key = getStateKey(call) ?: return
 
         val value = call.getObject("value")
         if (value == null) {
@@ -63,22 +59,14 @@ class AutoPlugin : Plugin() {
 
     @PluginMethod
     fun getState(call: PluginCall) {
-        val key = call.getString("key")
-        if (key.isNullOrBlank()) {
-            call.reject("key is required")
-            return
-        }
+        val key = getStateKey(call) ?: return
 
         call.resolve(stateResult(key, AutoBridge.getState(key)))
     }
 
     @PluginMethod
     fun removeState(call: PluginCall) {
-        val key = call.getString("key")
-        if (key.isNullOrBlank()) {
-            call.reject("key is required")
-            return
-        }
+        val key = getStateKey(call) ?: return
 
         AutoBridge.removeState(key)
         call.resolve()
@@ -86,11 +74,7 @@ class AutoPlugin : Plugin() {
 
     @PluginMethod
     fun setTransientState(call: PluginCall) {
-        val key = call.getString("key")
-        if (key.isNullOrBlank()) {
-            call.reject("key is required")
-            return
-        }
+        val key = getStateKey(call) ?: return
 
         val value = call.getObject("value")
         if (value == null) {
@@ -104,11 +88,7 @@ class AutoPlugin : Plugin() {
 
     @PluginMethod
     fun getTransientState(call: PluginCall) {
-        val key = call.getString("key")
-        if (key.isNullOrBlank()) {
-            call.reject("key is required")
-            return
-        }
+        val key = getStateKey(call) ?: return
 
         call.resolve(stateResult(key, AutoBridge.getTransientState(key)))
     }
@@ -135,6 +115,21 @@ class AutoPlugin : Plugin() {
 
     internal fun emitEvent(eventName: String, data: JSObject) {
         notifyListeners(eventName, data, true)
+    }
+
+    private fun getStateKey(call: PluginCall): String? {
+        val key = call.getString("key")
+        if (key.isNullOrBlank()) {
+            call.reject("key is required")
+            return null
+        }
+
+        if (key == ROOT_TEMPLATE_STATE_KEY) {
+            call.reject("key is reserved: $ROOT_TEMPLATE_STATE_KEY")
+            return null
+        }
+
+        return key
     }
 
     private fun stateResult(key: String, value: JSONObject?): JSObject {

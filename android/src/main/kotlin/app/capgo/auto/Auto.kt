@@ -7,6 +7,8 @@ import java.util.concurrent.CopyOnWriteArrayList
 import org.json.JSONArray
 import org.json.JSONObject
 
+internal const val ROOT_TEMPLATE_STATE_KEY = "__capgo_auto_root_template"
+
 data class AutoTemplateItem(
     val id: String,
     val title: String,
@@ -129,8 +131,6 @@ class Auto {
 }
 
 internal object AutoBridge {
-    private const val ROOT_TEMPLATE_STATE_KEY = "__capgo_auto_root_template"
-
     private var plugin: AutoPlugin? = null
     private var store: AutoStore? = null
     private val pendingEvents = mutableListOf<Pair<String, JSObject>>()
@@ -185,7 +185,7 @@ internal object AutoBridge {
 
     fun setTemplate(template: AutoTemplate) {
         this.template = template
-        store?.save(ROOT_TEMPLATE_STATE_KEY, template.toJson())
+        store?.save(ROOT_TEMPLATE_STATE_KEY, template.toJson(), synchronous = true)
         refreshScreens()
     }
 

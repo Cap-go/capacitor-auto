@@ -26,9 +26,19 @@ class AutoStore private constructor(context: Context) {
         listeners.remove(listener)
     }
 
-    fun save(key: String, value: JSONObject) {
-        prefs.edit().putString(key, value.toString()).apply()
-        notifyChanged(key, value, false)
+    fun save(key: String, value: JSONObject, synchronous: Boolean = false) {
+        val snapshot = snapshot(value)
+        val editor = prefs.edit().putString(key, snapshot.toString())
+        val stored = if (synchronous) {
+            editor.commit()
+        } else {
+            editor.apply()
+            true
+        }
+
+        if (stored) {
+            notifyChanged(key, snapshot, false)
+        }
     }
 
     fun remove(key: String) {
@@ -47,22 +57,28 @@ class AutoStore private constructor(context: Context) {
     }
 
     fun setTransient(key: String, value: JSONObject?) {
-        val previous = if (value == null) transientValues.remove(key) else transientValues.put(key, value)
-        if (previous?.toString() != value?.toString()) {
-            notifyChanged(key, value, true)
+        val snapshot = value?.let { snapshot(it) }
+        val previous = if (snapshot == null) transientValues.remove(key) else transientValues.put(key, snapshot)
+        if (previous?.toString() != snapshot?.toString()) {
+            notifyChanged(key, snapshot, true)
         }
     }
 
     fun getTransient(key: String): JSONObject? {
-        return transientValues[key]
+        return transientValues[key]?.let { snapshot(it) }
     }
 
     private fun notifyChanged(key: String, value: JSONObject?, transient: Boolean) {
+        val snapshot = value?.let { snapshot(it) }
         mainHandler.post {
             listeners.forEach { listener ->
-                listener.onAutoStoreUpdated(key, value, transient)
+                listener.onAutoStoreUpdated(key, snapshot?.let { snapshot(it) }, transient)
             }
         }
+    }
+
+    private fun snapshot(value: JSONObject): JSONObject {
+        return JSONObject(value.toString())
     }
 
     companion object {

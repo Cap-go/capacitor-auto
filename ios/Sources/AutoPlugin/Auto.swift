@@ -112,7 +112,7 @@ extension Notification.Name {
 public final class AutoBridge {
     public static let shared = AutoBridge()
 
-    private static let rootTemplateStateKey = "__capgo_auto_root_template"
+    static let rootTemplateStateKey = "__capgo_auto_root_template"
 
     private weak var plugin: AutoPlugin?
     private var pendingEvents: [(String, [String: Any])] = []
@@ -235,6 +235,10 @@ public final class AutoBridge {
 extension AutoBridge: AutoStoreListener {
     public func onAutoStoreUpdated(_ key: String, value: [String: Any]?, transient: Bool) {
         guard key != Self.rootTemplateStateKey else {
+            return
+        }
+
+        guard plugin != nil else {
             return
         }
 
