@@ -5,13 +5,14 @@ import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
-import org.json.JSONArray
+import org.json.JSONObject
 
 @CapacitorPlugin(name = "Auto")
 class AutoPlugin : Plugin() {
     private val implementation = Auto()
 
     override fun load() {
+        AutoBridge.configure(context)
         AutoBridge.attach(this)
     }
 
@@ -32,20 +33,84 @@ class AutoPlugin : Plugin() {
 
     @PluginMethod
     fun setRootTemplate(call: PluginCall) {
-        val title = call.getString("title")
-        if (title.isNullOrBlank()) {
+        val template = AutoTemplate.fromJson(call.data)
+        if (template == null) {
             call.reject("title is required")
             return
         }
 
-        AutoBridge.setTemplate(
-            AutoTemplate(
-                title = title,
-                sections = parseSections(call.getArray("sections")),
-                emptyText = call.getString("emptyText") ?: "No actions available.",
-            ),
-        )
+        AutoBridge.setTemplate(template)
         call.resolve()
+    }
+
+    @PluginMethod
+    fun setState(call: PluginCall) {
+        val key = call.getString("key")
+        if (key.isNullOrBlank()) {
+            call.reject("key is required")
+            return
+        }
+
+        val value = call.getObject("value")
+        if (value == null) {
+            call.reject("value is required for key=$key")
+            return
+        }
+
+        AutoBridge.setState(key, value)
+        call.resolve()
+    }
+
+    @PluginMethod
+    fun getState(call: PluginCall) {
+        val key = call.getString("key")
+        if (key.isNullOrBlank()) {
+            call.reject("key is required")
+            return
+        }
+
+        call.resolve(stateResult(key, AutoBridge.getState(key)))
+    }
+
+    @PluginMethod
+    fun removeState(call: PluginCall) {
+        val key = call.getString("key")
+        if (key.isNullOrBlank()) {
+            call.reject("key is required")
+            return
+        }
+
+        AutoBridge.removeState(key)
+        call.resolve()
+    }
+
+    @PluginMethod
+    fun setTransientState(call: PluginCall) {
+        val key = call.getString("key")
+        if (key.isNullOrBlank()) {
+            call.reject("key is required")
+            return
+        }
+
+        val value = call.getObject("value")
+        if (value == null) {
+            call.reject("value is required for key=$key")
+            return
+        }
+
+        AutoBridge.setTransientState(key, value)
+        call.resolve()
+    }
+
+    @PluginMethod
+    fun getTransientState(call: PluginCall) {
+        val key = call.getString("key")
+        if (key.isNullOrBlank()) {
+            call.reject("key is required")
+            return
+        }
+
+        call.resolve(stateResult(key, AutoBridge.getTransientState(key)))
     }
 
     @PluginMethod
@@ -72,52 +137,10 @@ class AutoPlugin : Plugin() {
         notifyListeners(eventName, data, true)
     }
 
-    private fun parseSections(rawSections: JSONArray?): List<AutoTemplateSection> {
-        if (rawSections == null) {
-            return emptyList()
-        }
-
-        return buildList {
-            for (sectionIndex in 0 until rawSections.length()) {
-                val rawSection = rawSections.optJSONObject(sectionIndex) ?: continue
-                val rawItems = rawSection.optJSONArray("items")
-                val items = parseItems(rawItems)
-
-                add(
-                    AutoTemplateSection(
-                        header = rawSection.optString("header").takeIf { it.isNotBlank() },
-                        items = items,
-                    ),
-                )
-            }
-        }
-    }
-
-    private fun parseItems(rawItems: JSONArray?): List<AutoTemplateItem> {
-        if (rawItems == null) {
-            return emptyList()
-        }
-
-        return buildList {
-            for (itemIndex in 0 until rawItems.length()) {
-                val rawItem = rawItems.optJSONObject(itemIndex) ?: continue
-                val id = rawItem.optString("id")
-                val title = rawItem.optString("title")
-
-                if (id.isBlank() || title.isBlank()) {
-                    continue
-                }
-
-                add(
-                    AutoTemplateItem(
-                        id = id,
-                        title = title,
-                        subtitle = rawItem.optString("subtitle").takeIf { it.isNotBlank() },
-                        payload = rawItem.optJSONObject("payload"),
-                        enabled = if (rawItem.has("enabled")) rawItem.optBoolean("enabled") else true,
-                    ),
-                )
-            }
+    private fun stateResult(key: String, value: JSONObject?): JSObject {
+        return JSObject().apply {
+            put("key", key)
+            value?.let { put("value", it) }
         }
     }
 }
