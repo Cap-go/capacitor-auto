@@ -1,3 +1,5 @@
+import { CapacitorUpdater } from '@capgo/capacitor-updater';
+import { Capacitor } from '@capacitor/core';
 import './style.css';
 import { Auto } from '@capgo/capacitor-auto';
 
@@ -60,3 +62,9 @@ versionButton.addEventListener('click', async () => {
     setOutput(`Error: ${error?.message ?? error}`);
   }
 });
+
+if (Capacitor.isNativePlatform()) {
+  CapacitorUpdater.notifyAppReady().catch((error) => {
+    console.error('Capgo notifyAppReady failed', error);
+  });
+}
