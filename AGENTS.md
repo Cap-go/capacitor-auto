@@ -26,3 +26,7 @@ Do not claim that this plugin mirrors the Capacitor WebView into the car display
 - iOS code must keep both CocoaPods and Swift Package Manager support valid.
 - Android code uses Kotlin and AndroidX Car App Library.
 - The default Android Auto category is `IOT`; app-specific categories may need manifest overrides in the consuming app.
+
+## Timeout Policy
+
+- Keep CI, script, and runtime timeouts at 10 minutes or less. Use `timeout-minutes: 10` or lower in GitHub Actions and cap timeout values at `600000` ms, `600` seconds, or `10m` unless explicitly requested.
