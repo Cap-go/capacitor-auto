@@ -153,6 +153,72 @@ function walkFiles(rootDir, exts) {
   return out;
 }
 
+function stripCommentsAndStrings(line, ext) {
+  if (ext === ".swift") {
+    return stripCStyleLine(line, { tripleQuote: true });
+  }
+  if (ext === ".java" || ext === ".kt") {
+    return stripCStyleLine(line, { tripleQuote: ext === ".kt" });
+  }
+  return line;
+}
+
+function stripCStyleLine(line, { tripleQuote = false } = {}) {
+  let out = "";
+  let i = 0;
+  while (i < line.length) {
+    const c = line[i];
+    const next = line[i + 1];
+
+    if (tripleQuote && c === '"' && next === '"' && line[i + 2] === '"') {
+      i += 3;
+      while (i < line.length) {
+        if (line[i] === '"' && line[i + 1] === '"' && line[i + 2] === '"') {
+          i += 3;
+          break;
+        }
+        i++;
+      }
+      out += " ";
+      continue;
+    }
+
+    if (c === '"' || c === "'") {
+      const quote = c;
+      i++;
+      while (i < line.length) {
+        if (line[i] === "\\") {
+          i += 2;
+          continue;
+        }
+        if (line[i] === quote) {
+          i++;
+          break;
+        }
+        i++;
+      }
+      out += " ";
+      continue;
+    }
+
+    if (c === "/" && next === "/") {
+      break;
+    }
+    if (c === "/" && next === "*") {
+      i += 2;
+      while (i < line.length - 1 && !(line[i] === "*" && line[i + 1] === "/")) {
+        i++;
+      }
+      i += 2;
+      continue;
+    }
+
+    out += c;
+    i++;
+  }
+  return out;
+}
+
 function collectScanRoots(pluginDir, pkg) {
   const cap = typeof pkg.capacitor === "object" && pkg.capacitor ? pkg.capacitor : {};
   const roots = [];
@@ -181,13 +247,16 @@ function scanFile(filePath, rule) {
   const lines = txt.split(/\r?\n/);
   const hits = [];
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (filePath.endsWith("Package.swift") && CORDova_SPM_LINE.test(line)) {
+    const rawLine = lines[i];
+    const line = filePath.endsWith("Package.swift")
+      ? rawLine
+      : stripCommentsAndStrings(rawLine, ext);
+    if (filePath.endsWith("Package.swift") && CORDova_SPM_LINE.test(rawLine)) {
       continue;
     }
-    if (rule.ignoreLine?.test(line)) continue;
+    if (rule.ignoreLine?.test(rawLine)) continue;
     if (rule.pattern.test(line)) {
-      hits.push({ line: i + 1, text: line.trim() });
+      hits.push({ line: i + 1, text: rawLine.trim() });
     }
   }
   return hits;
@@ -215,7 +284,7 @@ if (!cap.android && !cap.ios) {
   process.exit(0);
 }
 
-const scanRoots = collectScanRoots(pluginDir, cap);
+const scanRoots = collectScanRoots(pluginDir, pkg);
 const allExts = [...new Set(RULES.flatMap((r) => r.exts))];
 const files = [];
 for (const root of scanRoots) {
