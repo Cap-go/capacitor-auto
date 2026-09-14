@@ -153,70 +153,102 @@ function walkFiles(rootDir, exts) {
   return out;
 }
 
-function stripCommentsAndStrings(line, ext) {
-  if (ext === ".swift") {
-    return stripCStyleLine(line, { tripleQuote: true });
+function sanitizeSourceLines(rawLines, ext) {
+  if (ext !== ".java" && ext !== ".kt" && ext !== ".swift") {
+    return rawLines;
   }
-  if (ext === ".java" || ext === ".kt") {
-    return stripCStyleLine(line, { tripleQuote: ext === ".kt" });
+  const tripleQuote = ext === ".kt" || ext === ".swift";
+  const sanitized = [];
+  /** @type {{ mode: "code" | "blockComment" | "tripleString" | "string", stringQuote: string }} */
+  let state = { mode: "code", stringQuote: "" };
+
+  for (const rawLine of rawLines) {
+    const result = sanitizeLine(rawLine, tripleQuote, state);
+    sanitized.push(result.line);
+    state = result.state;
   }
-  return line;
+  return sanitized;
 }
 
-function stripCStyleLine(line, { tripleQuote = false } = {}) {
+function sanitizeLine(line, tripleQuote, state) {
+  let { mode, stringQuote } = state;
   let out = "";
   let i = 0;
+
   while (i < line.length) {
     const c = line[i];
     const next = line[i + 1];
+    const next2 = line[i + 2];
 
-    if (tripleQuote && c === '"' && next === '"' && line[i + 2] === '"') {
+    if (mode === "blockComment") {
+      if (c === "*" && next === "/") {
+        mode = "code";
+        i += 2;
+        out += " ";
+      } else {
+        out += " ";
+        i++;
+      }
+      continue;
+    }
+
+    if (mode === "tripleString") {
+      if (c === '"' && next === '"' && next2 === '"') {
+        mode = "code";
+        i += 3;
+        out += " ";
+      } else {
+        out += " ";
+        i++;
+      }
+      continue;
+    }
+
+    if (mode === "string") {
+      if (c === "\\") {
+        i += 2;
+        out += " ";
+        continue;
+      }
+      if (c === stringQuote) {
+        mode = "code";
+        i++;
+        out += " ";
+      } else {
+        out += " ";
+        i++;
+      }
+      continue;
+    }
+
+    if (tripleQuote && c === '"' && next === '"' && next2 === '"') {
+      mode = "tripleString";
       i += 3;
-      while (i < line.length) {
-        if (line[i] === '"' && line[i + 1] === '"' && line[i + 2] === '"') {
-          i += 3;
-          break;
-        }
-        i++;
-      }
       out += " ";
       continue;
     }
-
     if (c === '"' || c === "'") {
-      const quote = c;
+      stringQuote = c;
+      mode = "string";
       i++;
-      while (i < line.length) {
-        if (line[i] === "\\") {
-          i += 2;
-          continue;
-        }
-        if (line[i] === quote) {
-          i++;
-          break;
-        }
-        i++;
-      }
       out += " ";
       continue;
     }
-
     if (c === "/" && next === "/") {
       break;
     }
     if (c === "/" && next === "*") {
+      mode = "blockComment";
       i += 2;
-      while (i < line.length - 1 && !(line[i] === "*" && line[i + 1] === "/")) {
-        i++;
-      }
-      i += 2;
+      out += " ";
       continue;
     }
 
     out += c;
     i++;
   }
-  return out;
+
+  return { line: out, state: { mode, stringQuote } };
 }
 
 function collectScanRoots(pluginDir, pkg) {
@@ -245,12 +277,13 @@ function scanFile(filePath, rule) {
 
   const txt = readText(filePath);
   const lines = txt.split(/\r?\n/);
+  const sanitizedLines = filePath.endsWith("Package.swift")
+    ? lines
+    : sanitizeSourceLines(lines, ext);
   const hits = [];
   for (let i = 0; i < lines.length; i++) {
     const rawLine = lines[i];
-    const line = filePath.endsWith("Package.swift")
-      ? rawLine
-      : stripCommentsAndStrings(rawLine, ext);
+    const line = sanitizedLines[i];
     if (filePath.endsWith("Package.swift") && CORDova_SPM_LINE.test(rawLine)) {
       continue;
     }
