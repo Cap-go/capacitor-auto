@@ -1,13 +1,28 @@
 # @capgo/capacitor-auto
 
-<a href="https://capgo.app/"><img src="https://capgo.app/readme-banner.svg?repo=Cap-go/capacitor-auto" alt="Capgo - Instant updates for Capacitor" /></a>
+Connect your Capacitor app to CarPlay and Android Auto with a small bridge: set the car screen template, share state with native car code and receive car actions in JavaScript.
+
+<a href="https://capgo.app/?ref=plugin_auto"><img src="https://capgo.app/readme-banner.svg?repo=Cap-go/capacitor-auto" alt="Capgo - Instant updates for Capacitor" /></a>
 
 <div align="center">
-  <h2><a href="https://capgo.app/?ref=plugin_auto"> ➡️ Get Instant updates for your App with Capgo</a></h2>
-  <h2><a href="https://capgo.app/consulting/?ref=plugin_auto"> Missing a feature? We’ll build the plugin for you 💪</a></h2>
+  <p><b>Capgo</b>: open-source live updates for Ionic and Capacitor apps. Ship OTA fixes and features instantly, without waiting for app store review.</p>
+  <h2><a href="https://capgo.app/register/?ref=plugin_auto">➡️ Get started for free</a></h2>
+  <p>14-day unlimited free trial. No credit card required</p>
+  <p><a href="https://capgo.app/consulting/?ref=plugin_auto">Missing a feature? We'll build the plugin for you 💪</a></p>
 </div>
 
-Capacitor plugin for a small, template-safe bridge between your app and CarPlay / Android Auto.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Cap-go/capacitor-auto/main/assets/github-social-preview.png" alt="@capgo/capacitor-auto for Capacitor apps" width="300" />
+</p>
+
+## Key features
+
+- **Car templates**: `setRootTemplate()` sets the root CarPlay or Android Auto template.
+- **Shared state**: `setState()`, `getState()` and `removeState()` persist JSON state that native car code can read, even when the WebView is not running.
+- **Transient state**: `setTransientState()` and `getTransientState()` share process-local state and emit `stateChanged`.
+- **Messages and actions**: `sendMessage()` plus `carAction`, `messageReceived` and `connectionChanged` events.
+- **Connection check**: `isAvailable()` reports platform support and whether a car is connected.
+- **Platforms**: iOS and Android. iOS uses the CarPlay framework, Android uses `androidx.car.app`. On web only the state and message helpers work.
 
 ## Install
 
